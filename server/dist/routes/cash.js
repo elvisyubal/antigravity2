@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const cashController_1 = require("../controllers/cashController");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
+router.post('/open', auth_1.authenticateToken, cashController_1.openCashRegister);
+router.post('/:id/close', auth_1.authenticateToken, cashController_1.closeCashRegister);
+router.get('/current', auth_1.authenticateToken, cashController_1.getCurrentCashRegister);
+router.get('/history', auth_1.authenticateToken, cashController_1.getCashRegisterHistory);
+exports.default = router;

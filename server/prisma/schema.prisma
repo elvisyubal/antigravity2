@@ -1,0 +1,303 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// --------------------------------------------------------
+// AUTH & USUARIOS
+// --------------------------------------------------------
+
+model Usuario {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  username        String    @unique
+  password        String
+  rol             Rol       @default(CAJERO)
+  activo          Boolean   @default(true)
+  fecha_creacion  DateTime  @default(now())
+
+  ventas          Venta[]
+  cajas           Caja[]
+  bitacora        Bitacora[]
+
+  @@map("usuarios")
+}
+
+enum Rol {
+  ADMIN
+  CAJERO
+  VENDEDOR
+}
+
+// --------------------------------------------------------
+// INVENTARIO
+// --------------------------------------------------------
+
+model Categoria {
+  id          Int       @id @default(autoincrement())
+  nombre      String    @unique
+  descripcion String?
+  productos   Producto[]
+
+  @@map("categorias")
+}
+
+model Proveedor {
+  id          Int       @id @default(autoincrement())
+  ruc         String    @unique
+  nombre      String
+  telefono    String?
+  correo      String?
+  direccion   String?
+  productos   Producto[]
+  compras     Compra[]
+
+  @@map("proveedores")
+}
+
+model Producto {
+  id              Int       @id @default(autoincrement())
+  codigo          String    @unique // Codigo de barras
+  nombre          String
+  descripcion     String?
+  categoria_id    Int
+  proveedor_id    Int?
+  
+  precio_compra   Decimal   @db.Decimal(10, 2)
+  precio_venta    Decimal   @db.Decimal(10, 2)
+  
+  // Venta fraccionada
+  es_fraccionable  Boolean   @default(false)
+  unidades_por_caja Int       @default(1)
+  precio_unidad    Decimal?  @db.Decimal(10, 2)
+
+  stock_actual    Int       @default(0) // Stock en unidad mínima (pastillas)
+  stock_minimo    Int       @default(5)
+  estado          Boolean   @default(true) // Activo/Inactivo
+
+  categoria       Categoria @relation(fields: [categoria_id], references: [id])
+  proveedor       Proveedor? @relation(fields: [proveedor_id], references: [id])
+  
+  lotes           Lote[]
+  detalle_ventas  DetalleVenta[]
+  detalle_compras DetalleCompra[]
+
+  @@map("productos")
+}
+
+model Lote {
+  id              Int       @id @default(autoincrement())
+  producto_id     Int
+  codigo_lote     String
+  fecha_vencimiento DateTime
+  stock_inicial   Int
+  stock_actual    Int
+  fecha_ingreso   DateTime  @default(now())
+  
+  producto        Producto  @relation(fields: [producto_id], references: [id])
+
+  @@map("lotes")
+}
+
+// --------------------------------------------------------
+// CLIENTES & CREDITOS
+// --------------------------------------------------------
+
+model Cliente {
+  id              Int       @id @default(autoincrement())
+  dni_ruc         String?   @unique
+  nombres         String
+  apellidos       String?
+  telefono        String?
+  direccion       String?
+  tipo            TipoCliente @default(CONTADO)
+  limite_credito  Decimal?    @db.Decimal(10, 2)
+  saldo_pendiente Decimal     @default(0) @db.Decimal(10, 2)
+  
+  ventas          Venta[]
+  pagos_credito   PagoCredito[]
+
+  @@map("clientes")
+}
+
+enum TipoCliente {
+  CONTADO
+  CREDITO
+}
+
+// --------------------------------------------------------
+// VENTAS & CAJA
+// --------------------------------------------------------
+
+model Venta {
+  id              Int       @id @default(autoincrement())
+  codigo_venta    String    @unique // UUID o Serie interno
+  usuario_id      Int
+  cliente_id      Int?
+  
+  fecha           DateTime  @default(now())
+  subtotal        Decimal   @db.Decimal(10, 2)
+  descuento       Decimal   @default(0) @db.Decimal(10, 2)
+  total           Decimal   @db.Decimal(10, 2)
+  
+  metodo_pago     MetodoPago
+  estado          EstadoVenta @default(COMPLETADO)
+  
+  // Para creditos
+  monto_pagado    Decimal?   @db.Decimal(10, 2)
+  fecha_limite    DateTime?
+  
+  cliente         Cliente?   @relation(fields: [cliente_id], references: [id])
+  usuario         Usuario    @relation(fields: [usuario_id], references: [id])
+  detalles        DetalleVenta[]
+
+  @@map("ventas")
+}
+
+enum MetodoPago {
+  EFECTIVO
+  YAPE
+  PLIN
+  TARJETA
+  TRANSFERENCIA
+  CREDITO
+  MULTIPLE // Para pagos mixtos si se implementa
+}
+
+enum EstadoVenta {
+  COMPLETADO
+  ANULADO
+  PENDIENTE
+}
+
+model DetalleVenta {
+  id          Int       @id @default(autoincrement())
+  venta_id    Int
+  producto_id Int
+  cantidad    Int
+  precio_unitario Decimal @db.Decimal(10, 2)
+  subtotal    Decimal    @db.Decimal(10, 2)
+  es_unidad   Boolean    @default(false) // True si se vendió por unidade, False si fue por caja
+
+  venta       Venta      @relation(fields: [venta_id], references: [id])
+  producto    Producto   @relation(fields: [producto_id], references: [id])
+
+  @@map("detalle_ventas")
+}
+
+model Caja {
+  id              Int       @id @default(autoincrement())
+  usuario_id      Int
+  fecha_apertura  DateTime  @default(now())
+  fecha_cierre    DateTime?
+  monto_inicial   Decimal   @db.Decimal(10, 2)
+  monto_final     Decimal?  @db.Decimal(10, 2)
+  diferencia      Decimal?  @db.Decimal(10, 2)
+  estado          EstadoCaja @default(ABIERTA)
+  observaciones   String?
+
+  usuario         Usuario   @relation(fields: [usuario_id], references: [id])
+  movimientos     MovimientoCaja[]
+
+  @@map("caja")
+}
+
+enum EstadoCaja {
+  ABIERTA
+  CERRADA
+}
+
+model MovimientoCaja {
+  id          Int       @id @default(autoincrement())
+  caja_id     Int
+  tipo        TipoMovimiento
+  monto       Decimal   @db.Decimal(10, 2)
+  descripcion String
+  fecha       DateTime  @default(now())
+
+  caja        Caja      @relation(fields: [caja_id], references: [id])
+
+  @@map("movimientos_caja")
+}
+
+enum TipoMovimiento {
+  INGRESO
+  EGRESO
+}
+
+// --------------------------------------------------------
+// COMPRAS
+// --------------------------------------------------------
+
+model Compra {
+  id              Int       @id @default(autoincrement())
+  proveedor_id    Int
+  fecha           DateTime  @default(now())
+  total           Decimal   @db.Decimal(10, 2)
+  numero_factura  String?   // Factura del proveedor
+
+  proveedor       Proveedor @relation(fields: [proveedor_id], references: [id])
+  detalles        DetalleCompra[]
+
+  @@map("compras")
+}
+
+model DetalleCompra {
+  id          Int       @id @default(autoincrement())
+  compra_id   Int
+  producto_id Int
+  cantidad    Int
+  precio_costo Decimal  @db.Decimal(10, 2)
+  
+  // Opcional: Validar si entra a un lote especifico aqui o directo en Lote
+  lote        String?
+  vencimiento DateTime?
+
+  compra      Compra    @relation(fields: [compra_id], references: [id])
+  producto    Producto  @relation(fields: [producto_id], references: [id])
+
+  @@map("detalle_compras")
+}
+
+model PagoCredito {
+  id          Int       @id @default(autoincrement())
+  cliente_id  Int
+  monto       Decimal   @db.Decimal(10, 2)
+  fecha       DateTime  @default(now())
+  observacion String?
+
+  cliente     Cliente   @relation(fields: [cliente_id], references: [id])
+
+  @@map("pagos_creditos")
+}
+
+model Bitacora {
+  id          Int       @id @default(autoincrement())
+  usuario_id  Int
+  accion      String
+  modulo      String
+  fecha       DateTime  @default(now())
+  detalles    String?
+
+  usuario     Usuario   @relation(fields: [usuario_id], references: [id])
+
+  @@map("bitacora")
+}
+
+model Configuracion {
+  id                Int     @id @default(1)
+  nombre_botica     String  @default("Botica J&M")
+  lema              String? @default("¡Tu salud es nuestra prioridad!")
+  ruc               String?
+  direccion         String?
+  telefono          String?
+  correo            String?
+  pie_pagina_ticket String? @default("Gracias por su preferencia.")
+  dias_vencimiento_alerta Int @default(30)
+
+  @@map("configuracion")
+}

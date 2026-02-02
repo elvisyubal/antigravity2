@@ -1,0 +1,23 @@
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const productController_1 = require("../controllers/productController");
+const importController_1 = require("../controllers/importController");
+const auth_1 = require("../middleware/auth");
+const multer_1 = __importDefault(require("multer"));
+const os_1 = __importDefault(require("os"));
+const upload = (0, multer_1.default)({ dest: os_1.default.tmpdir() });
+const router = (0, express_1.Router)();
+router.get('/', auth_1.authenticateToken, productController_1.getProducts);
+router.get('/expiring', auth_1.authenticateToken, productController_1.getExpiringProducts);
+router.get('/low-stock', auth_1.authenticateToken, productController_1.getLowStockProducts);
+router.get('/template', auth_1.authenticateToken, (0, auth_1.requireRole)('ADMIN'), importController_1.downloadTemplate);
+router.post('/import', auth_1.authenticateToken, (0, auth_1.requireRole)('ADMIN'), upload.single('file'), importController_1.importProducts);
+router.get('/:id', auth_1.authenticateToken, productController_1.getProductById);
+router.post('/', auth_1.authenticateToken, (0, auth_1.requireRole)('ADMIN'), productController_1.createProduct);
+router.put('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)('ADMIN'), productController_1.updateProduct);
+router.delete('/:id', auth_1.authenticateToken, (0, auth_1.requireRole)('ADMIN'), productController_1.deleteProduct);
+exports.default = router;
