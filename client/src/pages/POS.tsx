@@ -121,16 +121,18 @@ const POS: React.FC = () => {
     }, [products, search]);
 
     const addToCart = (product: Product, esUnidad: boolean = false) => {
-        const existing = cart.find(
-            (item) => item.product.id === product.id && item.es_unidad === esUnidad
-        );
+        const totalUnitsInCart = cart
+            .filter(item => item.product.id === product.id)
+            .reduce((sum, item) => sum + (item.es_unidad ? item.cantidad : item.cantidad * product.unidades_por_caja), 0);
 
-        if (existing) {
-            const stockSuficiente = esUnidad
-                ? existing.cantidad < product.stock_actual
-                : (existing.cantidad + 1) * product.unidades_por_caja <= product.stock_actual;
+        const unidadesNecesarias = esUnidad ? 1 : product.unidades_por_caja;
 
-            if (stockSuficiente) {
+        if (totalUnitsInCart + unidadesNecesarias <= product.stock_actual) {
+            const existing = cart.find(
+                (item) => item.product.id === product.id && item.es_unidad === esUnidad
+            );
+
+            if (existing) {
                 setCart(
                     cart.map((item) =>
                         item.product.id === product.id && item.es_unidad === esUnidad
@@ -139,18 +141,10 @@ const POS: React.FC = () => {
                     )
                 );
             } else {
-                alert('Stock insuficiente');
+                setCart([...cart, { product, cantidad: 1, es_unidad: esUnidad }]);
             }
         } else {
-            const stockSuficiente = esUnidad
-                ? 1 <= product.stock_actual
-                : product.unidades_por_caja <= product.stock_actual;
-
-            if (stockSuficiente) {
-                setCart([...cart, { product, cantidad: 1, es_unidad: esUnidad }]);
-            } else {
-                alert('Stock insuficiente');
-            }
+            alert('Stock insuficiente para agregar más de este producto');
         }
     };
 
@@ -162,8 +156,17 @@ const POS: React.FC = () => {
                         const newQty = item.cantidad + delta;
                         if (newQty <= 0) return null;
 
-                        const stockNecesario = esUnidad ? newQty : newQty * item.product.unidades_por_caja;
-                        if (stockNecesario > item.product.stock_actual) return item;
+                        // Calcular stock ocupado por OTROS items del mismo producto en el carrito
+                        const stockOtrosItems = cart
+                            .filter(i => i.product.id === productId && (i.es_unidad !== esUnidad))
+                            .reduce((sum, i) => sum + (i.es_unidad ? i.cantidad : i.cantidad * i.product.unidades_por_caja), 0);
+
+                        const stockNuevoItem = esUnidad ? newQty : newQty * item.product.unidades_por_caja;
+
+                        if (stockOtrosItems + stockNuevoItem > item.product.stock_actual) {
+                            alert('No hay suficiente stock disponible');
+                            return item;
+                        }
 
                         return { ...item, cantidad: newQty };
                     }

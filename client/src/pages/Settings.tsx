@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { catalogApi, authApi, configApi } from '../lib/api';
-import { Plus, Edit, Trash2, X, Users, Tag, Truck, Building2, Save, Power, PowerOff } from 'lucide-react';
+import { Plus, Edit, Trash2, X, Users, Tag, Truck, Building2, Save, Power, PowerOff, Database, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 const Settings: React.FC = () => {
@@ -20,7 +20,7 @@ const Settings: React.FC = () => {
             if (tab === 'categories') { const res = await catalogApi.getCategories(); setCategories(res.data); }
             else if (tab === 'suppliers') { const res = await catalogApi.getSuppliers(); setSuppliers(res.data); }
             else if (tab === 'users') { const res = await authApi.getUsers(); setUsers(res.data); }
-            else if (tab === 'pharmacy') { const res = await configApi.get(); setFormData(res.data); }
+            else if (tab === 'pharmacy' || tab === 'database') { const res = await configApi.get(); setFormData(res.data); }
         } catch (error) { console.error(error); }
     };
 
@@ -42,7 +42,7 @@ const Settings: React.FC = () => {
             } else if (modalType === 'user') {
                 if (formData.id) await authApi.updateUser(formData.id, formData);
                 else await authApi.register(formData);
-            } else if (tab === 'pharmacy') {
+            } else if (tab === 'pharmacy' || tab === 'database') {
                 await configApi.update(formData);
                 alert('Configuración actualizada');
             }
@@ -80,6 +80,7 @@ const Settings: React.FC = () => {
                     { id: 'suppliers', label: 'Proveedores', icon: Truck },
                     { id: 'users', label: 'Usuarios', icon: Users },
                     { id: 'pharmacy', label: 'Botica', icon: Building2 },
+                    { id: 'database', label: 'Base de Datos', icon: Database },
                 ].map((t) => (
                     <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-2 px-4 py-3 border-b-2 ${tab === t.id ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}>
                         <t.icon size={18} />{t.label}
@@ -178,6 +179,93 @@ const Settings: React.FC = () => {
                             ))}
                         </div>
                     </>
+                )}
+
+                {tab === 'database' && (
+                    <div className="max-w-2xl">
+                        <h2 className="text-lg font-semibold mb-6 flex items-center gap-2">
+                            <Database className="text-orange-600" size={24} />
+                            Configuración de Backups (Copias de Seguridad)
+                        </h2>
+                        <div className="space-y-6">
+                            <div className="p-4 bg-orange-50 rounded-xl border border-orange-100 flex items-center justify-between">
+                                <div>
+                                    <h3 className="font-bold text-orange-900">Backup Automático</h3>
+                                    <p className="text-sm text-orange-700">Programar copias de seguridad automáticas del sistema.</p>
+                                </div>
+                                <button
+                                    onClick={() => setFormData({ ...formData, backup_habilitado: !formData.backup_habilitado })}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${formData.backup_habilitado ? 'bg-orange-500' : 'bg-gray-200'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData.backup_habilitado ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="md:col-span-2">
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Ruta de destino (Carpeta en el servidor)</label>
+                                    <input
+                                        type="text"
+                                        placeholder="C:\Backups\Botica_JM"
+                                        value={formData.backup_ruta || ''}
+                                        onChange={(e) => setFormData({ ...formData, backup_ruta: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                                    />
+                                    <p className="text-xs text-gray-500 mt-1 italic">* El servidor debe tener permisos de escritura en esta ruta.</p>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Frecuencia (Cada cuántos días)</label>
+                                    <input
+                                        type="number"
+                                        value={formData.backup_frecuencia_dias || 1}
+                                        onChange={(e) => setFormData({ ...formData, backup_frecuencia_dias: parseInt(e.target.value) })}
+                                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                                        min="1"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Hora de ejecución</label>
+                                    <input
+                                        type="time"
+                                        value={formData.backup_hora || '03:00'}
+                                        onChange={(e) => setFormData({ ...formData, backup_hora: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border focus:ring-2 focus:ring-orange-500"
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t flex flex-col md:flex-row gap-4">
+                                <button
+                                    onClick={handleSubmit}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-orange-500 text-white font-bold rounded-lg hover:bg-orange-600 transition-all shadow-md"
+                                >
+                                    <Save size={20} /> Guardar Configuración
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={async () => {
+                                        if (!confirm('¿Desea realizar un backup ahora? Esto podría tardar unos segundos.')) return;
+                                        try {
+                                            const res = await configApi.triggerBackup();
+                                            alert(res.data.message + '\nUbicación: ' + res.data.path);
+                                            loadData();
+                                        } catch (err: any) {
+                                            alert(err.response?.data?.error || 'Error al generar backup');
+                                        }
+                                    }}
+                                    className="flex-1 flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-all shadow-md"
+                                >
+                                    <Download size={20} /> Generar Backup Ahora
+                                </button>
+                            </div>
+
+                            {formData.ultimo_backup && (
+                                <p className="text-center text-sm text-gray-500">
+                                    Último backup realizado: <span className="font-bold text-gray-700">{new Date(formData.ultimo_backup).toLocaleString()}</span>
+                                </p>
+                            )}
+                        </div>
+                    </div>
                 )}
 
                 {tab === 'pharmacy' && (

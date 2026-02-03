@@ -12,8 +12,9 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.updateConfig = exports.getConfig = void 0;
+exports.triggerBackup = exports.updateConfig = exports.getConfig = void 0;
 const db_1 = __importDefault(require("../db"));
+const backupService_1 = require("../utils/backupService");
 const getConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         let config = yield db_1.default.configuracion.findFirst();
@@ -59,3 +60,14 @@ const updateConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* (
     }
 });
 exports.updateConfig = updateConfig;
+const triggerBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const path = yield (0, backupService_1.runBackup)();
+        res.json({ message: 'Backup completado con éxito', path });
+    }
+    catch (error) {
+        console.error('Trigger backup error:', error);
+        res.status(500).json({ error: 'Error al realizar el backup. Asegúrese de que la ruta sea válida y el servidor tenga permisos.' });
+    }
+});
+exports.triggerBackup = triggerBackup;

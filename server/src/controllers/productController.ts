@@ -79,21 +79,25 @@ export const createProduct = async (req: Request, res: Response) => {
         });
 
         // Si se proporciona información de lote, crear el registro
+        let stockEnUnidades = 0;
         if (lote) {
+            const unidadesCaja = product.unidades_por_caja || 1;
+            stockEnUnidades = product.es_fraccionable ? lote.cantidad * unidadesCaja : lote.cantidad;
+
             await prisma.lote.create({
                 data: {
                     producto_id: product.id,
                     codigo_lote: lote.codigo_lote,
                     fecha_vencimiento: new Date(lote.fecha_vencimiento),
-                    stock_inicial: lote.cantidad,
-                    stock_actual: lote.cantidad,
+                    stock_inicial: stockEnUnidades,
+                    stock_actual: stockEnUnidades,
                 },
             });
 
             // Actualizar el stock del producto
             await prisma.producto.update({
                 where: { id: product.id },
-                data: { stock_actual: lote.cantidad },
+                data: { stock_actual: stockEnUnidades },
             });
         }
 
@@ -248,5 +252,50 @@ export const getLowStockProducts = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Get low stock products error:', error);
         res.status(500).json({ error: 'Error al obtener productos con bajo stock' });
+    }
+};
+
+export const addBatchToProduct = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { codigo_lote, fecha_vencimiento, cantidad, es_unidad } = req.body;
+
+        const product = await prisma.producto.findUnique({
+            where: { id: parseInt(id as string) }
+        });
+
+        if (!product) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+
+        const unidadesCaja = product.unidades_por_caja || 1;
+        // Si el producto es fraccionable y NO se marcó como ingreso de unidades, se multiplica por unidadesCaja
+        const stockEnUnidades = (product.es_fraccionable && !es_unidad) ? Number(cantidad) * unidadesCaja : Number(cantidad);
+
+        // Crear el lote
+        const newLote = await prisma.lote.create({
+            data: {
+                producto_id: product.id,
+                codigo_lote: codigo_lote || `L-${Date.now()}`,
+                fecha_vencimiento: new Date(fecha_vencimiento),
+                stock_inicial: stockEnUnidades,
+                stock_actual: stockEnUnidades,
+            }
+        });
+
+        // Actualizar stock del producto
+        await prisma.producto.update({
+            where: { id: product.id },
+            data: {
+                stock_actual: {
+                    increment: stockEnUnidades
+                }
+            }
+        });
+
+        res.json({ message: 'Stock agregado exitosamente', lote: newLote });
+    } catch (error) {
+        console.error('Add batch error:', error);
+        res.status(500).json({ error: 'Error al agregar lote' });
     }
 };

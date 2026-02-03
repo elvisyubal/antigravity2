@@ -61,7 +61,8 @@ export const productsApi = {
         return api.post('/products/import', formData, {
             headers: { 'Content-Type': 'multipart/form-data' }
         });
-    }
+    },
+    addStock: (id: number, data: any) => api.post(`/products/${id}/add-batch`, data),
 };
 
 // Sales
@@ -119,4 +120,5 @@ export const reportsApi = {
 export const configApi = {
     get: () => api.get('/config'),
     update: (data: any) => api.put('/config', data),
+    triggerBackup: () => api.post('/config/backup'),
 };

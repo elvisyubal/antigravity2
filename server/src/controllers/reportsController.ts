@@ -107,9 +107,14 @@ export const getDashboardStats = async (req: Request, res: Response) => {
             },
             creditos: {
                 deudores: totalDeudores,
-                deudaTotal: deudaTotal._sum.saldo_pendiente || 0,
+                deudaTotal: Number(deudaTotal._sum.saldo_pendiente || 0),
             },
-            ventasPorMetodo,
+            ventasPorMetodo: ventasPorMetodo.map(v => ({
+                ...v,
+                _sum: {
+                    total: Number(v._sum.total || 0)
+                }
+            })),
         });
     } catch (error) {
         console.error('Get dashboard stats error:', error);

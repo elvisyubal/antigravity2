@@ -13,8 +13,12 @@ import catalogRoutes from './routes/catalog';
 import cashRoutes from './routes/cash';
 import reportsRoutes from './routes/reports';
 import configRoutes from './routes/config';
+import { initBackupCron } from './utils/backupService';
 
 dotenv.config();
+
+// Iniciar cron de backups
+initBackupCron();
 
 const app = express();
 

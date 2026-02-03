@@ -62,19 +62,48 @@ export const createSale = async (req: AuthRequest, res: Response) => {
             },
         });
 
-        // Actualizar stock de productos
+        // Actualizar stock de productos y lotes
         for (const item of items) {
-            const product = await prisma.producto.findUnique({ where: { id: item.producto_id } });
+            const product = await prisma.producto.findUnique({
+                where: { id: item.producto_id },
+                include: {
+                    lotes: {
+                        where: { stock_actual: { gt: 0 } },
+                        orderBy: { fecha_vencimiento: 'asc' }
+                    }
+                }
+            });
+
             if (!product) continue;
 
             // Cantidad a descontar en unidades mínimas
-            const cantidadDescontar = item.es_unidad ? item.cantidad : item.cantidad * product.unidades_por_caja;
+            let cantidadRestante = item.es_unidad ? item.cantidad : item.cantidad * product.unidades_por_caja;
+            const totalADescontar = cantidadRestante;
 
+            // Descontar de lotes (priorizando vencimiento más cercano)
+            for (const lote of product.lotes) {
+                if (cantidadRestante <= 0) break;
+
+                const aDescontarEnLote = Math.min(lote.stock_actual, cantidadRestante);
+
+                await prisma.lote.update({
+                    where: { id: lote.id },
+                    data: {
+                        stock_actual: {
+                            decrement: aDescontarEnLote
+                        }
+                    }
+                });
+
+                cantidadRestante -= aDescontarEnLote;
+            }
+
+            // Actualizar stock general del producto
             await prisma.producto.update({
                 where: { id: item.producto_id },
                 data: {
                     stock_actual: {
-                        decrement: cantidadDescontar,
+                        decrement: totalADescontar,
                     },
                 },
             });
@@ -191,10 +220,25 @@ export const cancelSale = async (req: AuthRequest, res: Response) => {
 
         // Devolver stock
         for (const detalle of sale.detalles) {
-            const product = await prisma.producto.findUnique({ where: { id: detalle.producto_id } });
+            const product = await prisma.producto.findUnique({
+                where: { id: detalle.producto_id },
+                include: { lotes: { orderBy: { fecha_vencimiento: 'asc' } } }
+            });
             if (!product) continue;
 
             const cantidadDevolver = detalle.es_unidad ? detalle.cantidad : detalle.cantidad * product.unidades_por_caja;
+
+            // Devolver al primer lote disponible (o crear uno si no existe, aunque debería existir)
+            if (product.lotes.length > 0) {
+                await prisma.lote.update({
+                    where: { id: product.lotes[0].id },
+                    data: {
+                        stock_actual: {
+                            increment: cantidadDevolver
+                        }
+                    }
+                });
+            }
 
             await prisma.producto.update({
                 where: { id: detalle.producto_id },

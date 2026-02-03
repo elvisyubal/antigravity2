@@ -24,7 +24,7 @@ const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
     { name: 'Punto de Venta', href: '/pos', icon: ShoppingCart },
     { name: 'Ventas', href: '/sales', icon: BarChart3 },
-    { name: 'Productos', href: '/products', icon: Package },
+    { name: 'Productos', href: '/products', icon: Package, adminOnly: true },
     { name: 'Clientes', href: '/clients', icon: Users },
     { name: 'Créditos', href: '/credits', icon: CreditCard },
     { name: 'Caja', href: '/cash', icon: DollarSign },

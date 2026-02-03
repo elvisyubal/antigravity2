@@ -99,7 +99,7 @@ const Credits: React.FC = () => {
         });
     };
 
-    const totalDeuda = debtors.reduce((sum, d) => sum + d.saldo_pendiente, 0);
+    const totalDeuda = debtors.reduce((sum, d) => sum + Number(d.saldo_pendiente || 0), 0);
 
     if (loading) {
         return (
@@ -160,7 +160,7 @@ const Credits: React.FC = () => {
                                 <div className="flex items-center gap-4">
                                     <div className="text-right">
                                         <p className="text-2xl font-bold text-red-600">
-                                            {formatCurrency(debtor.saldo_pendiente)}
+                                            {formatCurrency(Number(debtor.saldo_pendiente))}
                                         </p>
                                         {debtor.limite_credito && (
                                             <p className="text-sm text-gray-500">
@@ -228,7 +228,7 @@ const Credits: React.FC = () => {
                                     {selectedDebtor.nombres} {selectedDebtor.apellidos}
                                 </p>
                                 <p className="text-2xl font-bold text-red-600 mt-1">
-                                    Deuda: {formatCurrency(selectedDebtor.saldo_pendiente)}
+                                    Deuda: {formatCurrency(Number(selectedDebtor.saldo_pendiente))}
                                 </p>
                             </div>
 
@@ -305,7 +305,7 @@ const Credits: React.FC = () => {
                                 </div>
                                 <div className="text-right">
                                     <p className="text-gray-500 text-sm">Saldo Pendiente</p>
-                                    <p className="text-3xl font-black text-red-600">{formatCurrency(detailDebtor.saldo_pendiente)}</p>
+                                    <p className="text-3xl font-black text-red-600">{formatCurrency(Number(detailDebtor.saldo_pendiente))}</p>
                                 </div>
                             </div>
 

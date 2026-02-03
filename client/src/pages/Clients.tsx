@@ -191,7 +191,7 @@ const Clients: React.FC = () => {
                                 </span>
                                 {client.saldo_pendiente > 0 && (
                                     <span className="text-sm font-medium text-red-600">
-                                        Debe: {formatCurrency(client.saldo_pendiente)}
+                                        Debe: {formatCurrency(Number(client.saldo_pendiente))}
                                     </span>
                                 )}
                             </div>

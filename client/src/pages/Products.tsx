@@ -8,6 +8,7 @@ import {
     Trash2,
     AlertTriangle,
     Package,
+    PlusCircle,
     X,
     FileDown,
     Upload,
@@ -52,10 +53,19 @@ const Products: React.FC = () => {
     const [filterCategory, setFilterCategory] = useState<number | ''>('');
     const [alertDays, setAlertDays] = useState(30);
     const [showModal, setShowModal] = useState(false);
-    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+    const [showBatchModal, setShowBatchModal] = useState(false);
+    const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+    const [batchData, setBatchData] = useState({
+        codigo_lote: '',
+        fecha_vencimiento: '',
+        cantidad: '0',
+        esUnidad: false
+    });
     const [showImportModal, setShowImportModal] = useState(false);
     const [importFile, setImportFile] = useState<File | null>(null);
     const [importing, setImporting] = useState(false);
+    const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+
 
     const [formData, setFormData] = useState({
         codigo: '',
@@ -86,7 +96,7 @@ const Products: React.FC = () => {
             ]);
             setProducts(productsRes.data);
             setCategories(categoriesRes.data);
-            setAlertDays(configRes.data.dias_vencimiento_alerta || 30);
+            setAlertDays(Number(configRes.data.dias_vencimiento_alerta || 30));
         } catch (error) {
             console.error('Error loading data:', error);
         } finally {
@@ -193,6 +203,26 @@ const Products: React.FC = () => {
         } catch (error) {
             console.error('Error saving product:', error);
             alert('Error al guardar el producto');
+        }
+    };
+
+    const handleBatchSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedProduct) return;
+
+        try {
+            const data = {
+                codigo_lote: batchData.codigo_lote,
+                fecha_vencimiento: batchData.fecha_vencimiento,
+                cantidad: parseInt(batchData.cantidad),
+                es_unidad: batchData.esUnidad
+            };
+            await productsApi.addStock(selectedProduct.id, data);
+            setShowBatchModal(false);
+            loadData();
+        } catch (error) {
+            console.error('Error adding stock:', error);
+            alert('Error al agregar stock');
         }
     };
 
@@ -365,6 +395,22 @@ const Products: React.FC = () => {
                                     <td className="px-4 py-3">
                                         <div className="flex items-center justify-center gap-2">
                                             <button
+                                                onClick={() => {
+                                                    setSelectedProduct(product);
+                                                    setBatchData({
+                                                        codigo_lote: '',
+                                                        fecha_vencimiento: '',
+                                                        cantidad: '0',
+                                                        esUnidad: !product.es_fraccionable
+                                                    });
+                                                    setShowBatchModal(true);
+                                                }}
+                                                className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-all"
+                                                title="Ingreso de Mercadería"
+                                            >
+                                                <PlusCircle size={18} />
+                                            </button>
+                                            <button
                                                 onClick={() => openModal(product)}
                                                 className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                                             >
@@ -501,7 +547,7 @@ const Products: React.FC = () => {
                             <div className="grid grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                                        Stock Mín.
+                                        Stock Mín. (Unidades)
                                     </label>
                                     <input
                                         type="number"
@@ -516,7 +562,7 @@ const Products: React.FC = () => {
                                 {!editingProduct && (
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                                            Stock Inicial
+                                            Stock Inicial ({formData.es_fraccionable ? 'Cajas' : 'Físico'})
                                         </label>
                                         <input
                                             type="number"
@@ -528,6 +574,9 @@ const Products: React.FC = () => {
                                             placeholder="0"
                                             required
                                         />
+                                        <p className="text-[10px] text-gray-500">
+                                            {formData.es_fraccionable ? `Equivale a ${parseInt(formData.stock_inicial || '0') * (parseInt(formData.unidades_por_caja || '1'))} unidades` : ''}
+                                        </p>
                                     </div>
                                 )}
                             </div>
@@ -700,6 +749,99 @@ const Products: React.FC = () => {
                                     {importing ? 'Importando...' : 'Iniciar Importación'}
                                 </button>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Batch Entry Modal */}
+            {showBatchModal && selectedProduct && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+                        <div className="p-4 bg-green-600 text-white flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                                <PlusCircle size={20} />
+                                <h2 className="text-xl font-bold">Ingreso de Mercadería</h2>
+                            </div>
+                            <button onClick={() => setShowBatchModal(false)}><X size={24} /></button>
+                        </div>
+                        <div className="p-6">
+                            <div className="mb-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                                <p className="text-xs text-gray-500 uppercase font-bold">Producto</p>
+                                <p className="text-sm font-medium text-gray-800">{selectedProduct.nombre}</p>
+                                <p className="text-[10px] text-gray-400">Stock Actual: {selectedProduct.stock_actual} unidades</p>
+                            </div>
+
+                            <form onSubmit={handleBatchSubmit} className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Código de Lote</label>
+                                    <input
+                                        type="text"
+                                        value={batchData.codigo_lote}
+                                        onChange={(e) => setBatchData({ ...batchData, codigo_lote: e.target.value })}
+                                        className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500"
+                                        placeholder="Ej: L-102030"
+                                        required
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Cant. ({selectedProduct.es_fraccionable ? 'Cajas' : 'Físico'})</label>
+                                        <input
+                                            type="number"
+                                            value={batchData.cantidad}
+                                            onChange={(e) => setBatchData({ ...batchData, cantidad: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500 font-bold"
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">Vencimiento</label>
+                                        <input
+                                            type="date"
+                                            value={batchData.fecha_vencimiento}
+                                            onChange={(e) => setBatchData({ ...batchData, fecha_vencimiento: e.target.value })}
+                                            className="w-full px-3 py-2 rounded-lg border border-gray-300 focus:ring-2 focus:ring-green-500"
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                                {selectedProduct.es_fraccionable && (
+                                    <div className="flex items-center gap-2 bg-blue-50 p-3 rounded-lg border border-blue-100 mb-4">
+                                        <input
+                                            type="checkbox"
+                                            id="modal_es_unidad"
+                                            checked={batchData.esUnidad}
+                                            onChange={(e) => setBatchData({ ...batchData, esUnidad: e.target.checked })}
+                                            className="w-4 h-4 text-green-600 focus:ring-green-500 border-gray-300 rounded"
+                                        />
+                                        <label htmlFor="modal_es_unidad" className="text-sm font-bold text-blue-800">
+                                            Ingresando Unidades Sueltas (Pastillas)
+                                        </label>
+                                    </div>
+                                )}
+
+                                {selectedProduct.es_fraccionable && (
+                                    <p className="text-xs text-gray-500 bg-yellow-50 p-2 rounded border border-yellow-100 italic">
+                                        * Se sumarán {batchData.esUnidad ? parseInt(batchData.cantidad || '0') : parseInt(batchData.cantidad || '0') * selectedProduct.unidades_por_caja} unidades al stock.
+                                    </p>
+                                )}
+                                <div className="flex gap-3 pt-4">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowBatchModal(false)}
+                                        className="flex-1 py-3 bg-gray-100 text-gray-700 font-bold rounded-lg hover:bg-gray-200"
+                                    >
+                                        Cancelar
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        className="flex-1 py-3 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 transition-all shadow-lg shadow-green-200"
+                                    >
+                                        Confirmar Ingreso
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
                 </div>

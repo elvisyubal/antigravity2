@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import prisma from '../db';
+import { runBackup } from '../utils/backupService';
 
 export const getConfig = async (req: Request, res: Response) => {
     try {
@@ -43,5 +44,15 @@ export const updateConfig = async (req: Request, res: Response) => {
     } catch (error) {
         console.error('Update config error:', error);
         res.status(500).json({ error: 'Error al actualizar configuración' });
+    }
+};
+
+export const triggerBackup = async (req: Request, res: Response) => {
+    try {
+        const path = await runBackup();
+        res.json({ message: 'Backup completado con éxito', path });
+    } catch (error) {
+        console.error('Trigger backup error:', error);
+        res.status(500).json({ error: 'Error al realizar el backup. Asegúrese de que la ruta sea válida y el servidor tenga permisos.' });
     }
 };

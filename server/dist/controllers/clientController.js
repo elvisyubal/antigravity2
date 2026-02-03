@@ -99,7 +99,7 @@ const addPayment = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
             where: { id: cliente_id },
             data: {
                 saldo_pendiente: {
-                    decrement: monto,
+                    decrement: Number(monto),
                 },
             },
         });

@@ -23,7 +23,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getLowStockProducts = exports.getExpiringProducts = exports.deleteProduct = exports.updateProduct = exports.createProduct = exports.getProductById = exports.getProducts = void 0;
+exports.addBatchToProduct = exports.getLowStockProducts = exports.getExpiringProducts = exports.deleteProduct = exports.updateProduct = exports.createProduct = exports.getProductById = exports.getProducts = void 0;
 const db_1 = __importDefault(require("../db"));
 const getProducts = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -88,20 +88,23 @@ const createProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* 
             },
         });
         // Si se proporciona información de lote, crear el registro
+        let stockEnUnidades = 0;
         if (lote) {
+            const unidadesCaja = product.unidades_por_caja || 1;
+            stockEnUnidades = product.es_fraccionable ? lote.cantidad * unidadesCaja : lote.cantidad;
             yield db_1.default.lote.create({
                 data: {
                     producto_id: product.id,
                     codigo_lote: lote.codigo_lote,
                     fecha_vencimiento: new Date(lote.fecha_vencimiento),
-                    stock_inicial: lote.cantidad,
-                    stock_actual: lote.cantidad,
+                    stock_inicial: stockEnUnidades,
+                    stock_actual: stockEnUnidades,
                 },
             });
             // Actualizar el stock del producto
             yield db_1.default.producto.update({
                 where: { id: product.id },
-                data: { stock_actual: lote.cantidad },
+                data: { stock_actual: stockEnUnidades },
             });
         }
         const productWithRelations = yield db_1.default.producto.findUnique({
@@ -238,3 +241,43 @@ const getLowStockProducts = (req, res) => __awaiter(void 0, void 0, void 0, func
     }
 });
 exports.getLowStockProducts = getLowStockProducts;
+const addBatchToProduct = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { id } = req.params;
+        const { codigo_lote, fecha_vencimiento, cantidad, es_unidad } = req.body;
+        const product = yield db_1.default.producto.findUnique({
+            where: { id: parseInt(id) }
+        });
+        if (!product) {
+            return res.status(404).json({ error: 'Producto no encontrado' });
+        }
+        const unidadesCaja = product.unidades_por_caja || 1;
+        // Si el producto es fraccionable y NO se marcó como ingreso de unidades, se multiplica por unidadesCaja
+        const stockEnUnidades = (product.es_fraccionable && !es_unidad) ? Number(cantidad) * unidadesCaja : Number(cantidad);
+        // Crear el lote
+        const newLote = yield db_1.default.lote.create({
+            data: {
+                producto_id: product.id,
+                codigo_lote: codigo_lote || `L-${Date.now()}`,
+                fecha_vencimiento: new Date(fecha_vencimiento),
+                stock_inicial: stockEnUnidades,
+                stock_actual: stockEnUnidades,
+            }
+        });
+        // Actualizar stock del producto
+        yield db_1.default.producto.update({
+            where: { id: product.id },
+            data: {
+                stock_actual: {
+                    increment: stockEnUnidades
+                }
+            }
+        });
+        res.json({ message: 'Stock agregado exitosamente', lote: newLote });
+    }
+    catch (error) {
+        console.error('Add batch error:', error);
+        res.status(500).json({ error: 'Error al agregar lote' });
+    }
+});
+exports.addBatchToProduct = addBatchToProduct;

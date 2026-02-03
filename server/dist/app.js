@@ -17,7 +17,10 @@ const catalog_1 = __importDefault(require("./routes/catalog"));
 const cash_1 = __importDefault(require("./routes/cash"));
 const reports_1 = __importDefault(require("./routes/reports"));
 const config_1 = __importDefault(require("./routes/config"));
+const backupService_1 = require("./utils/backupService");
 dotenv_1.default.config();
+// Iniciar cron de backups
+(0, backupService_1.initBackupCron)();
 const app = (0, express_1.default)();
 // Middleware
 app.use(express_1.default.json());

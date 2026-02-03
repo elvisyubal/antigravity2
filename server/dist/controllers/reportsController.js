@@ -108,9 +108,11 @@ const getDashboardStats = (req, res) => __awaiter(void 0, void 0, void 0, functi
             },
             creditos: {
                 deudores: totalDeudores,
-                deudaTotal: deudaTotal._sum.saldo_pendiente || 0,
+                deudaTotal: Number(deudaTotal._sum.saldo_pendiente || 0),
             },
-            ventasPorMetodo,
+            ventasPorMetodo: ventasPorMetodo.map(v => (Object.assign(Object.assign({}, v), { _sum: {
+                    total: Number(v._sum.total || 0)
+                } }))),
         });
     }
     catch (error) {

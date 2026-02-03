@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { salesApi, configApi } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { printTicket } from '../lib/print';
 import {
     Search,
@@ -20,8 +21,8 @@ interface Sale {
     usuario: { nombre: string };
     detalles: any[];
 }
-
 const Sales: React.FC = () => {
+    const { user } = useAuth();
     const [sales, setSales] = useState<Sale[]>([]);
     const [loading, setLoading] = useState(true);
     const [fechaInicio, setFechaInicio] = useState('');
@@ -29,6 +30,7 @@ const Sales: React.FC = () => {
     const [selectedSale, setSelectedSale] = useState<Sale | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [config, setConfig] = useState<any>(null);
+    const [cancelling, setCancelling] = useState(false);
 
     useEffect(() => {
         loadSales();
@@ -62,6 +64,23 @@ const Sales: React.FC = () => {
 
     const handlePrint = (sale: Sale) => {
         printTicket(sale, config);
+    };
+
+    const handleCancelSale = async (id: number) => {
+        if (!window.confirm('¿Estás seguro de que deseas anular esta venta? Esta acción no se puede deshacer.')) return;
+
+        setCancelling(true);
+        try {
+            await salesApi.cancel(id);
+            alert('Venta anulada exitosamente');
+            setSelectedSale(null);
+            loadSales();
+        } catch (error: any) {
+            console.error('Error cancelling sale:', error);
+            alert(error.response?.data?.error || 'Error al anular la venta');
+        } finally {
+            setCancelling(false);
+        }
     };
 
     const filteredSales = sales.filter(s =>
@@ -170,6 +189,19 @@ const Sales: React.FC = () => {
                                                 >
                                                     <Printer size={18} />
                                                 </button>
+                                                {user?.rol === 'ADMIN' && sale.estado !== 'ANULADO' && (
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleCancelSale(sale.id);
+                                                        }}
+                                                        className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                                        title="Anular Venta"
+                                                        disabled={cancelling}
+                                                    >
+                                                        <XCircle size={18} />
+                                                    </button>
+                                                )}
                                             </div>
                                         </td>
                                     </tr>
@@ -249,6 +281,15 @@ const Sales: React.FC = () => {
                             >
                                 <Printer size={18} /> Imprimir Ticket
                             </button>
+                            {user?.rol === 'ADMIN' && selectedSale.estado !== 'ANULADO' && (
+                                <button
+                                    onClick={() => handleCancelSale(selectedSale.id)}
+                                    disabled={cancelling}
+                                    className="px-6 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 flex items-center gap-2 disabled:opacity-50"
+                                >
+                                    <XCircle size={18} /> {cancelling ? 'Anulando...' : 'Anular Venta'}
+                                </button>
+                            )}
                         </div>
                     </div>
                 </div>

@@ -298,6 +298,13 @@ model Configuracion {
   correo            String?
   pie_pagina_ticket String? @default("Gracias por su preferencia.")
   dias_vencimiento_alerta Int @default(30)
+  
+  // Backups
+  backup_habilitado      Boolean @default(false)
+  backup_ruta           String?
+  backup_frecuencia_dias Int     @default(1)
+  backup_hora           String  @default("03:00")
+  ultimo_backup         DateTime?
 
   @@map("configuracion")
 }

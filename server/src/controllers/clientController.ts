@@ -91,7 +91,7 @@ export const addPayment = async (req: Request, res: Response) => {
             where: { id: cliente_id },
             data: {
                 saldo_pendiente: {
-                    decrement: monto,
+                    decrement: Number(monto),
                 },
             },
         });
