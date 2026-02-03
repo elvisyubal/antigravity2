@@ -40,6 +40,9 @@ const updateConfig = (req, res) => __awaiter(void 0, void 0, void 0, function* (
         if (configData.dias_vencimiento_alerta) {
             configData.dias_vencimiento_alerta = parseInt(configData.dias_vencimiento_alerta);
         }
+        if (configData.backup_frecuencia_dias) {
+            configData.backup_frecuencia_dias = parseInt(configData.backup_frecuencia_dias);
+        }
         let config = yield db_1.default.configuracion.findFirst();
         if (config) {
             config = yield db_1.default.configuracion.update({
@@ -67,7 +70,8 @@ const triggerBackup = (req, res) => __awaiter(void 0, void 0, void 0, function* 
     }
     catch (error) {
         console.error('Trigger backup error:', error);
-        res.status(500).json({ error: 'Error al realizar el backup. Asegúrese de que la ruta sea válida y el servidor tenga permisos.' });
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        res.status(500).json({ error: `Error al realizar el backup: ${errorMessage}` });
     }
 });
 exports.triggerBackup = triggerBackup;

@@ -22,21 +22,30 @@ export const runBackup = async (manualPath?: string) => {
         const regex = /postgresql:\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/([^?]+)/;
         const match = dbUrl.match(regex);
 
-        if (!match) throw new Error('Cadenas de conexión DATABASE_URL inválida');
+        if (!match) throw new Error('Cadena de conexión DATABASE_URL inválida');
 
-        const [_, user, password, host, port, dbname] = match;
+        let [_, user, password, host, port, dbname] = match;
+
+        // Decodificar password por si tiene caracteres especiales
+        password = decodeURIComponent(password);
+
+        // FORZAR IPv4 para evitar el error de localhost (::1) de la captura
+        if (host === 'localhost') host = '127.0.0.1';
 
         // Path a pg_dump (ajustado a la versión encontrada)
         const pgDumpPath = 'C:\\Program Files\\PostgreSQL\\18\\bin\\pg_dump.exe';
 
-        // El comando usa PGPASSWORD para evitar el prompt de contraseña
-        const command = `set PGPASSWORD=${password} && "${pgDumpPath}" -h ${host} -p ${port} -U ${user} -F p -b -v -f "${fullPath}" ${dbname}`;
+        // El comando usa comillas para PGPASSWORD para máxima compatibilidad en Windows
+        const command = `set "PGPASSWORD=${password}" && "${pgDumpPath}" -h ${host} -p ${port} -U ${user} -F p -b -v -f "${fullPath}" ${dbname}`;
+
+        console.log('Ejecutando comando de backup en host:', host);
 
         return new Promise((resolve, reject) => {
             exec(command, async (error, stdout, stderr) => {
                 if (error) {
-                    console.error('Error al ejecutar backup:', error);
-                    reject(error);
+                    console.error('Error al ejecutar backup (stderr):', stderr);
+                    console.error('Error al ejecutar backup (error):', error);
+                    reject(new Error(`pg_dump falló: ${stderr || error.message}`));
                     return;
                 }
 
@@ -55,7 +64,6 @@ export const runBackup = async (manualPath?: string) => {
 };
 
 export const initBackupCron = () => {
-    // Ejecutar cada hora para verificar si corresponde hacer backup
     cron.schedule('0 * * * *', async () => {
         const config = await prisma.configuracion.findFirst();
         if (!config || !config.backup_habilitado || !config.backup_ruta) return;
@@ -63,16 +71,13 @@ export const initBackupCron = () => {
         const now = new Date();
         const [hours, minutes] = (config.backup_hora || "03:00").split(':').map(Number);
 
-        // Verificar si es la hora configurada
         if (now.getHours() === hours) {
             const lastBackup = config.ultimo_backup ? new Date(config.ultimo_backup) : new Date(0);
             const diffDays = Math.floor((now.getTime() - lastBackup.getTime()) / (1000 * 60 * 60 * 24));
 
             if (diffDays >= config.backup_frecuencia_dias) {
-                console.log('Iniciando backup programado...');
                 try {
                     await runBackup();
-                    console.log('Backup programado completado con éxito.');
                 } catch (error) {
                     console.error('Fallo en backup programado:', error);
                 }

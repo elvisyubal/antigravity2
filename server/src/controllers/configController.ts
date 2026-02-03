@@ -28,6 +28,10 @@ export const updateConfig = async (req: Request, res: Response) => {
             configData.dias_vencimiento_alerta = parseInt(configData.dias_vencimiento_alerta);
         }
 
+        if (configData.backup_frecuencia_dias) {
+            configData.backup_frecuencia_dias = parseInt(configData.backup_frecuencia_dias);
+        }
+
         let config = await prisma.configuracion.findFirst();
 
         if (config) {
@@ -53,6 +57,7 @@ export const triggerBackup = async (req: Request, res: Response) => {
         res.json({ message: 'Backup completado con éxito', path });
     } catch (error) {
         console.error('Trigger backup error:', error);
-        res.status(500).json({ error: 'Error al realizar el backup. Asegúrese de que la ruta sea válida y el servidor tenga permisos.' });
+        const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+        res.status(500).json({ error: `Error al realizar el backup: ${errorMessage}` });
     }
 };
