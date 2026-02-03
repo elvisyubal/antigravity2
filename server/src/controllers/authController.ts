@@ -27,7 +27,7 @@ export const login = async (req: Request, res: Response) => {
         }
 
         const token = jwt.sign(
-            { userId: user.id, rol: user.rol },
+            { userId: user.id, rol: user.rol, permisos: user.permisos },
             JWT_SECRET,
             { expiresIn: '24h' }
         );
@@ -39,6 +39,7 @@ export const login = async (req: Request, res: Response) => {
                 nombre: user.nombre,
                 username: user.username,
                 rol: user.rol,
+                permisos: user.permisos,
             },
         });
     } catch (error) {
@@ -49,7 +50,7 @@ export const login = async (req: Request, res: Response) => {
 
 export const register = async (req: Request, res: Response) => {
     try {
-        const { nombre, username, password, rol } = req.body;
+        const { nombre, username, password, rol, permisos } = req.body;
 
         const existingUser = await prisma.usuario.findUnique({
             where: { username },
@@ -67,6 +68,7 @@ export const register = async (req: Request, res: Response) => {
                 username,
                 password: hashedPassword,
                 rol: rol || 'CAJERO',
+                permisos: permisos || null,
             },
         });
 
@@ -77,6 +79,7 @@ export const register = async (req: Request, res: Response) => {
                 nombre: newUser.nombre,
                 username: newUser.username,
                 rol: newUser.rol,
+                permisos: newUser.permisos,
             },
         });
     } catch (error) {
@@ -94,6 +97,7 @@ export const getUsers = async (req: Request, res: Response) => {
                 username: true,
                 rol: true,
                 activo: true,
+                permisos: true,
                 fecha_creacion: true,
             },
             orderBy: {
@@ -110,13 +114,14 @@ export const getUsers = async (req: Request, res: Response) => {
 export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as any;
-        const { nombre, username, password, rol, activo } = req.body;
+        const { nombre, username, password, rol, activo, permisos } = req.body;
 
         const updateData: any = {
             nombre,
             username,
             rol,
-            activo
+            activo,
+            permisos
         };
 
         if (password && password.trim() !== '') {
@@ -131,7 +136,8 @@ export const updateUser = async (req: Request, res: Response) => {
                 nombre: true,
                 username: true,
                 rol: true,
-                activo: true
+                activo: true,
+                permisos: true
             }
         });
 
@@ -185,7 +191,8 @@ export const toggleUserStatus = async (req: Request, res: Response) => {
                 nombre: true,
                 username: true,
                 rol: true,
-                activo: true
+                activo: true,
+                permisos: true
             }
         });
 

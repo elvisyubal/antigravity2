@@ -22,14 +22,14 @@ import {
 
 const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
-    { name: 'Punto de Venta', href: '/pos', icon: ShoppingCart },
-    { name: 'Ventas', href: '/sales', icon: BarChart3 },
-    { name: 'Productos', href: '/products', icon: Package, adminOnly: true },
-    { name: 'Clientes', href: '/clients', icon: Users },
-    { name: 'Créditos', href: '/credits', icon: CreditCard },
-    { name: 'Caja', href: '/cash', icon: DollarSign },
-    { name: 'Reportes', href: '/reports', icon: BarChart3 },
-    { name: 'Configuración', href: '/settings', icon: Settings, adminOnly: true },
+    { name: 'Punto de Venta', href: '/pos', icon: ShoppingCart, requiredPermission: { module: 'Ventas', action: 'crear' } },
+    { name: 'Ventas', href: '/sales', icon: BarChart3, requiredPermission: { module: 'Ventas', action: 'ver' } },
+    { name: 'Productos', href: '/products', icon: Package, requiredPermission: { module: 'Productos', action: 'ver' } },
+    { name: 'Clientes', href: '/clients', icon: Users, requiredPermission: { module: 'Clientes', action: 'ver' } },
+    { name: 'Créditos', href: '/credits', icon: CreditCard, requiredPermission: { module: 'Clientes', action: 'ver' } },
+    { name: 'Caja', href: '/cash', icon: DollarSign, requiredPermission: { module: 'Caja', action: 'ver' } },
+    { name: 'Reportes', href: '/reports', icon: BarChart3, requiredPermission: { module: 'Reportes', action: 'ver' } },
+    { name: 'Configuración', href: '/settings', icon: Settings, requiredPermission: { module: 'Configuracion', action: 'ver' } },
     { name: 'Acerca de', href: '/about', icon: Info },
 ];
 
@@ -37,7 +37,7 @@ const MainLayout: React.FC = () => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [isCollapsed, setIsCollapsed] = useState(false);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
-    const { user, logout } = useAuth();
+    const { user, logout, hasPermission } = useAuth();
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -59,9 +59,10 @@ const MainLayout: React.FC = () => {
         navigate('/login');
     };
 
-    const filteredNavigation = navigation.filter(
-        (item) => !item.adminOnly || user?.rol === 'ADMIN'
-    );
+    const filteredNavigation = navigation.filter((item) => {
+        if (!item.requiredPermission) return true;
+        return hasPermission(item.requiredPermission.module, item.requiredPermission.action);
+    });
 
     return (
         <div className="min-h-screen bg-orange-50">

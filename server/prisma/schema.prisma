@@ -19,6 +19,7 @@ model Usuario {
   rol             Rol       @default(CAJERO)
   activo          Boolean   @default(true)
   fecha_creacion  DateTime  @default(now())
+  permisos        Json?     // Almacena un objeto con permisos específicos por módulo
 
   ventas          Venta[]
   cajas           Caja[]

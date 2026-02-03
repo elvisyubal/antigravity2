@@ -3,6 +3,9 @@ import { catalogApi, authApi, configApi } from '../lib/api';
 import { Plus, Edit, Trash2, X, Users, Tag, Truck, Building2, Save, Power, PowerOff, Database, Download } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
+const MODULES = ['Productos', 'Ventas', 'Clientes', 'Reportes', 'Caja', 'Configuracion'];
+const ACTIONS = ['ver', 'crear', 'editar', 'eliminar', 'anular', 'admin'];
+
 const Settings: React.FC = () => {
     const { user } = useAuth();
     const [tab, setTab] = useState('categories');
@@ -26,7 +29,7 @@ const Settings: React.FC = () => {
 
     const openModal = (type: string, data?: any) => {
         setModalType(type);
-        setFormData(data || {});
+        setFormData(data || (type === 'user' ? { permisos: {} } : {}));
         setShowModal(true);
     };
 
@@ -68,13 +71,35 @@ const Settings: React.FC = () => {
         } catch (error) { console.error(error); }
     };
 
+    const togglePermission = (modulo: string, accion: string) => {
+        setFormData((prev: any) => {
+            const permisos = prev.permisos || {};
+            const accionesModulo = permisos[modulo] || [];
+
+            let nuevasAcciones;
+            if (accionesModulo.includes(accion)) {
+                nuevasAcciones = accionesModulo.filter((a: string) => a !== accion);
+            } else {
+                nuevasAcciones = [...accionesModulo, accion];
+            }
+
+            return {
+                ...prev,
+                permisos: {
+                    ...permisos,
+                    [modulo]: nuevasAcciones
+                }
+            };
+        });
+    };
+
     if (user?.rol !== 'ADMIN') return <div className="text-center p-12 text-gray-500">Acceso denegado</div>;
 
     return (
         <div className="space-y-6">
             <h1 className="text-2xl font-bold text-gray-800">Configuración</h1>
 
-            <div className="flex gap-2 border-b">
+            <div className="flex gap-2 border-b overflow-x-auto">
                 {[
                     { id: 'categories', label: 'Categorías', icon: Tag },
                     { id: 'suppliers', label: 'Proveedores', icon: Truck },
@@ -82,7 +107,7 @@ const Settings: React.FC = () => {
                     { id: 'pharmacy', label: 'Botica', icon: Building2 },
                     { id: 'database', label: 'Base de Datos', icon: Database },
                 ].map((t) => (
-                    <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-2 px-4 py-3 border-b-2 ${tab === t.id ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}>
+                    <button key={t.id} onClick={() => setTab(t.id)} className={`flex items-center gap-2 px-4 py-3 border-b-2 whitespace-nowrap ${tab === t.id ? 'border-orange-500 text-orange-600' : 'border-transparent text-gray-500'}`}>
                         <t.icon size={18} />{t.label}
                     </button>
                 ))}
@@ -319,8 +344,11 @@ const Settings: React.FC = () => {
 
             {showModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-                    <div className="bg-white rounded-2xl w-full max-w-md">
-                        <div className="p-4 bg-orange-500 text-white flex justify-between"><h2 className="text-xl font-bold">{modalType === 'category' ? 'Categoría' : modalType === 'supplier' ? 'Proveedor' : 'Usuario'}</h2><button onClick={() => setShowModal(false)}><X size={24} /></button></div>
+                    <div className={`bg-white rounded-2xl w-full ${modalType === 'user' ? 'max-w-4xl' : 'max-w-md'} max-h-[90vh] overflow-y-auto`}>
+                        <div className="p-4 bg-orange-500 text-white flex justify-between sticky top-0 z-10">
+                            <h2 className="text-xl font-bold">{modalType === 'category' ? 'Categoría' : modalType === 'supplier' ? 'Proveedor' : 'Usuario'}</h2>
+                            <button onClick={() => setShowModal(false)}><X size={24} /></button>
+                        </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             {modalType === 'category' && (
                                 <>
@@ -336,18 +364,45 @@ const Settings: React.FC = () => {
                                 </>
                             )}
                             {modalType === 'user' && (
-                                <>
-                                    <input type="text" placeholder="Nombre completo" value={formData.nombre || ''} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required />
-                                    <input type="text" placeholder="Usuario" value={formData.username || ''} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required />
-                                    <input type="password" placeholder={formData.id ? "Nueva contraseña (opcional)" : "Contraseña"} value={formData.password || ''} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required={!formData.id} />
-                                    <select value={formData.rol || 'CAJERO'} onChange={(e) => setFormData({ ...formData, rol: e.target.value })} className="w-full px-3 py-2 rounded-lg border">
-                                        <option value="CAJERO">Cajero</option>
-                                        <option value="VENDEDOR">Vendedor</option>
-                                        <option value="ADMIN">Administrador</option>
-                                    </select>
-                                </>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-gray-700">Datos Generales</h3>
+                                        <input type="text" placeholder="Nombre completo" value={formData.nombre || ''} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required />
+                                        <input type="text" placeholder="Usuario" value={formData.username || ''} onChange={(e) => setFormData({ ...formData, username: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required />
+                                        <input type="password" placeholder={formData.id ? "Nueva contraseña (opcional)" : "Contraseña"} value={formData.password || ''} onChange={(e) => setFormData({ ...formData, password: e.target.value })} className="w-full px-3 py-2 rounded-lg border" required={!formData.id} />
+                                        <select value={formData.rol || 'CAJERO'} onChange={(e) => setFormData({ ...formData, rol: e.target.value })} className="w-full px-3 py-2 rounded-lg border">
+                                            <option value="CAJERO">Cajero</option>
+                                            <option value="VENDEDOR">Vendedor</option>
+                                            <option value="ADMIN">Administrador</option>
+                                        </select>
+                                    </div>
+                                    <div className="space-y-4">
+                                        <h3 className="font-semibold text-gray-700">Permisos Personalizados</h3>
+                                        <p className="text-xs text-gray-500 mb-2">Seleccione las acciones permitidas para este usuario por módulo.</p>
+                                        <div className="max-h-64 overflow-y-auto border rounded-lg p-3 space-y-4">
+                                            {MODULES.map(modulo => (
+                                                <div key={modulo}>
+                                                    <h4 className="font-bold text-sm text-gray-800 mb-2 border-b">{modulo}</h4>
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {ACTIONS.map(accion => (
+                                                            <label key={accion} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-gray-50 p-1 rounded">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={(formData.permisos?.[modulo] || []).includes(accion)}
+                                                                    onChange={() => togglePermission(modulo, accion)}
+                                                                    className="rounded text-orange-500 focus:ring-orange-500"
+                                                                />
+                                                                <span className="capitalize">{accion === 'admin' ? 'Admin Total' : accion}</span>
+                                                            </label>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
                             )}
-                            <div className="flex gap-3"><button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-lg">Cancelar</button><button type="submit" className="flex-1 py-3 bg-orange-500 text-white rounded-lg">Guardar</button></div>
+                            <div className="flex gap-3 pt-4 border-t"><button type="button" onClick={() => setShowModal(false)} className="flex-1 py-3 bg-gray-100 rounded-lg">Cancelar</button><button type="submit" className="flex-1 py-3 bg-orange-500 text-white rounded-lg">Guardar</button></div>
                         </form>
                     </div>
                 </div>

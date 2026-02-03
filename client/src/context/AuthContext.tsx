@@ -2,11 +2,16 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authApi } from '../lib/api';
 
+interface Permisos {
+    [key: string]: string[];
+}
+
 interface User {
     id: number;
     nombre: string;
     username: string;
     rol: string;
+    permisos?: Permisos;
 }
 
 interface AuthContextType {
@@ -16,6 +21,7 @@ interface AuthContextType {
     isLoading: boolean;
     login: (username: string, password: string) => Promise<void>;
     logout: () => void;
+    hasPermission: (modulo: string, accion: string) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -54,6 +60,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setUser(null);
     };
 
+    const hasPermission = (modulo: string, accion: string): boolean => {
+        if (!user) return false;
+        if (user.rol === 'ADMIN') return true;
+
+        const permisos = user.permisos || {};
+        const permisosModulo = permisos[modulo] || [];
+
+        return permisosModulo.includes(accion) || permisosModulo.includes('admin');
+    };
+
     return (
         <AuthContext.Provider
             value={{
@@ -63,6 +79,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
                 isLoading,
                 login,
                 logout,
+                hasPermission,
             }}
         >
             {children}
