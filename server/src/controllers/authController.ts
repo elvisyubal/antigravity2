@@ -104,6 +104,12 @@ export const getUsers = async (req: Request, res: Response) => {
                 nombre: 'asc'
             }
         });
+        console.log(`Get Users: ${users.length} usuarios encontrados`);
+        // Log para depurar permisos del primer usuario no admin si existe
+        const nonAdmin = users.find(u => u.rol !== 'ADMIN');
+        if (nonAdmin) {
+            console.log('Sample User Permissions:', JSON.stringify(nonAdmin.permisos, null, 2));
+        }
         res.json(users);
     } catch (error) {
         console.error('Get users error:', error);
@@ -115,6 +121,7 @@ export const updateUser = async (req: Request, res: Response) => {
     try {
         const { id } = req.params as any;
         const { nombre, username, password, rol, activo, permisos } = req.body;
+        console.log('Update User Request Body:', JSON.stringify(req.body, null, 2));
 
         const updateData: any = {
             nombre,

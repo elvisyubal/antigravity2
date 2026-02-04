@@ -29,7 +29,14 @@ const Settings: React.FC = () => {
 
     const openModal = (type: string, data?: any) => {
         setModalType(type);
-        setFormData(data || (type === 'user' ? { permisos: {} } : {}));
+        if (type === 'user') {
+            setFormData({
+                ...data,
+                permisos: data?.permisos || {}
+            });
+        } else {
+            setFormData(data || (type === 'user' ? { permisos: {} } : {}));
+        }
         setShowModal(true);
     };
 
@@ -43,8 +50,13 @@ const Settings: React.FC = () => {
                 if (formData.id) await catalogApi.updateSupplier(formData.id, formData);
                 else await catalogApi.createSupplier(formData);
             } else if (modalType === 'user') {
-                if (formData.id) await authApi.updateUser(formData.id, formData);
-                else await authApi.register(formData);
+                // Asegurarse de enviar permisos
+                const dataToSend = {
+                    ...formData,
+                    permisos: formData.permisos || {}
+                };
+                if (formData.id) await authApi.updateUser(formData.id, dataToSend);
+                else await authApi.register(dataToSend);
             } else if (tab === 'pharmacy' || tab === 'database') {
                 await configApi.update(formData);
                 alert('Configuración actualizada');

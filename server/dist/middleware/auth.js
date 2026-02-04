@@ -3,7 +3,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requireRole = exports.authenticateToken = void 0;
+exports.checkPermission = exports.requireRole = exports.authenticateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const JWT_SECRET = process.env.JWT_SECRET || 'supersecretkey_botica_jm_2026';
 const authenticateToken = (req, res, next) => {
@@ -18,6 +18,7 @@ const authenticateToken = (req, res, next) => {
         }
         req.userId = decoded.userId;
         req.userRole = decoded.rol;
+        req.userPermissions = decoded.permisos;
         next();
     });
 };
@@ -31,3 +32,21 @@ const requireRole = (...roles) => {
     };
 };
 exports.requireRole = requireRole;
+const checkPermission = (modulo, accion) => {
+    return (req, res, next) => {
+        // ADMIN siempre tiene acceso
+        if (req.userRole === 'ADMIN') {
+            return next();
+        }
+        const permisos = req.userPermissions || {};
+        const permisosModulo = permisos[modulo] || [];
+        // Verificar si tiene el permiso específico o 'admin' en ese módulo (por si acaso)
+        if (permisosModulo.includes(accion) || permisosModulo.includes('admin')) {
+            return next();
+        }
+        return res.status(403).json({
+            error: `Acceso denegado: Requiere permiso de '${accion}' en módulo '${modulo}'`
+        });
+    };
+};
+exports.checkPermission = checkPermission;

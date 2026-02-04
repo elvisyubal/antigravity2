@@ -33,7 +33,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
         if (!isValidPassword) {
             return res.status(401).json({ error: 'Credenciales inválidas' });
         }
-        const token = jsonwebtoken_1.default.sign({ userId: user.id, rol: user.rol }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jsonwebtoken_1.default.sign({ userId: user.id, rol: user.rol, permisos: user.permisos }, JWT_SECRET, { expiresIn: '24h' });
         res.json({
             token,
             user: {
@@ -41,6 +41,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 nombre: user.nombre,
                 username: user.username,
                 rol: user.rol,
+                permisos: user.permisos,
             },
         });
     }
@@ -52,7 +53,7 @@ const login = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
 exports.login = login;
 const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { nombre, username, password, rol } = req.body;
+        const { nombre, username, password, rol, permisos } = req.body;
         const existingUser = yield db_1.default.usuario.findUnique({
             where: { username },
         });
@@ -66,6 +67,7 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 username,
                 password: hashedPassword,
                 rol: rol || 'CAJERO',
+                permisos: permisos || null,
             },
         });
         res.json({
@@ -75,6 +77,7 @@ const register = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 nombre: newUser.nombre,
                 username: newUser.username,
                 rol: newUser.rol,
+                permisos: newUser.permisos,
             },
         });
     }
@@ -93,12 +96,19 @@ const getUsers = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
                 username: true,
                 rol: true,
                 activo: true,
+                permisos: true,
                 fecha_creacion: true,
             },
             orderBy: {
                 nombre: 'asc'
             }
         });
+        console.log(`Get Users: ${users.length} usuarios encontrados`);
+        // Log para depurar permisos del primer usuario no admin si existe
+        const nonAdmin = users.find(u => u.rol !== 'ADMIN');
+        if (nonAdmin) {
+            console.log('Sample User Permissions:', JSON.stringify(nonAdmin.permisos, null, 2));
+        }
         res.json(users);
     }
     catch (error) {
@@ -110,12 +120,14 @@ exports.getUsers = getUsers;
 const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { id } = req.params;
-        const { nombre, username, password, rol, activo } = req.body;
+        const { nombre, username, password, rol, activo, permisos } = req.body;
+        console.log('Update User Request Body:', JSON.stringify(req.body, null, 2));
         const updateData = {
             nombre,
             username,
             rol,
-            activo
+            activo,
+            permisos
         };
         if (password && password.trim() !== '') {
             updateData.password = yield bcryptjs_1.default.hash(password, 10);
@@ -128,7 +140,8 @@ const updateUser = (req, res) => __awaiter(void 0, void 0, void 0, function* () 
                 nombre: true,
                 username: true,
                 rol: true,
-                activo: true
+                activo: true,
+                permisos: true
             }
         });
         res.json(updatedUser);
@@ -177,7 +190,8 @@ const toggleUserStatus = (req, res) => __awaiter(void 0, void 0, void 0, functio
                 nombre: true,
                 username: true,
                 rol: true,
-                activo: true
+                activo: true,
+                permisos: true
             }
         });
         res.json(updatedUser);
