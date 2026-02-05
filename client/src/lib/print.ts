@@ -2,7 +2,7 @@ export const formatCurrency = (v: number) => new Intl.NumberFormat('es-PE', { st
 export const formatDate = (d: string) => new Date(d).toLocaleString('es-PE');
 
 export const printTicket = (sale: any, config?: any) => {
-    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    const printWindow = window.open('', '_blank', 'width=220,height=auto');
     if (!printWindow) return;
 
     const companyName = config?.nombre_botica || 'BOTICA J&M';
@@ -12,60 +12,224 @@ export const printTicket = (sale: any, config?: any) => {
     const ticketFooter = config?.pie_pagina_ticket || 'Gracias por su preferencia.';
 
     const html = `
+        <!DOCTYPE html>
         <html>
             <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Ticket - ${sale.codigo_venta}</title>
                 <style>
-                    body { font-family: 'Courier New', Courier, monospace; width: 80mm; margin: 0 auto; padding: 10px; font-size: 12px; }
+                    * { 
+                        margin: 0; 
+                        padding: 0; 
+                        box-sizing: border-box; 
+                    }
+                    html, body { 
+                        width: 58mm;
+                        height: auto;
+                        margin: 0;
+                        padding: 0;
+                    }
+                    body { 
+                        font-family: 'Consolas', 'Courier New', monospace; 
+                        font-size: 16px;
+                        line-height: 1.3;
+                        padding: 0;
+                        color: #000;
+                        background: #fff;
+                        font-weight: bold;
+                        -webkit-print-color-adjust: exact;
+                        print-color-adjust: exact;
+                    }
                     .text-center { text-align: center; }
-                    .header { margin-bottom: 20px; }
-                    .divider { border-top: 1px dashed #000; margin: 10px 0; }
-                    .item { display: flex; justify-content: space-between; margin-bottom: 5px; }
-                    .total { font-weight: bold; font-size: 14px; margin-top: 10px; }
-                    .footer { margin-top: 20px; font-size: 10px; }
-                    @media print { body { width: 80mm; margin: 0; } }
+                    .header { margin-bottom: 4px; }
+                    .header h2 { 
+                        font-size: 20px; 
+                        margin-bottom: 2px; 
+                        font-weight: bold;
+                        letter-spacing: 0.5px;
+                    }
+                    .header p { 
+                        font-size: 13px; 
+                        margin: 1px 0;
+                        line-height: 1.1;
+                        font-weight: bold;
+                    }
+                    .divider { 
+                        border-top: 1px dashed #000; 
+                        margin: 3px 0; 
+                        height: 0;
+                    }
+                    .info-row { 
+                        display: flex; 
+                        justify-content: space-between; 
+                        margin: 1px 0;
+                        font-size: 14px;
+                        line-height: 1.3;
+                        font-weight: bold;
+                    }
+                    .info-row strong { 
+                        display: inline-block; 
+                        min-width: 40%;
+                        font-weight: bold;
+                    }
+                    .info-row span {
+                        text-align: right;
+                        word-break: break-word;
+                        font-weight: bold;
+                    }
+                    .table-header { 
+                        display: grid;
+                        grid-template-columns: 1fr 12px 45px;
+                        gap: 3px;
+                        font-weight: bold; 
+                        margin: 3px 0 2px 0;
+                        font-size: 14px;
+                        border-bottom: 1px solid #000;
+                        padding-bottom: 1px;
+                    }
+                    .table-header .right { text-align: right; }
+                    .item { 
+                        margin: 2px 0;
+                        font-size: 14px;
+                        page-break-inside: avoid;
+                        font-weight: bold;
+                    }
+                    .item-name {
+                        overflow: hidden;
+                        text-overflow: ellipsis;
+                        white-space: nowrap;
+                        margin-bottom: 1px;
+                        font-weight: bold;
+                    }
+                    .item-details {
+                        display: grid;
+                        grid-template-columns: 1fr 12px 45px;
+                        gap: 3px;
+                        padding-left: 2px;
+                        font-size: 13px;
+                        font-weight: bold;
+                    }
+                    .item-details .right { text-align: right; }
+                    .total-section { 
+                        margin-top: 4px;
+                        padding-top: 3px;
+                        border-top: 2px solid #000;
+                    }
+                    .total-row {
+                        display: flex;
+                        justify-content: space-between;
+                        font-weight: bold;
+                        font-size: 18px;
+                        margin: 2px 0;
+                    }
+                    .payment-info {
+                        margin: 3px 0 2px 0;
+                        font-size: 14px;
+                        font-weight: bold;
+                    }
+                    .footer { 
+                        margin-top: 4px;
+                        padding-top: 3px;
+                        font-size: 13px;
+                        text-align: center;
+                        border-top: 1px dashed #000;
+                        font-weight: bold;
+                    }
+                    .footer p { 
+                        margin: 1px 0;
+                        line-height: 1.1;
+                        font-weight: bold;
+                    }
+                    @page {
+                        size: 58mm auto;
+                        margin: 0;
+                    }
+                    @media print { 
+                        html, body { 
+                            width: 58mm !important;
+                            height: auto !important;
+                            margin: 0 !important;
+                            padding: 0 !important;
+                        }
+                        body {
+                            padding: 0 !important;
+                            font-weight: bold !important;
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
+                        }
+                        .no-print { display: none !important; }
+                    }
                 </style>
             </head>
             <body>
                 <div class="text-center header">
-                    <h2 style="margin: 0;">${companyName}</h2>
-                    <p style="margin: 5px 0;">${companySlogan}</p>
-                    ${companyRuc ? `<p style="margin: 0;">RUC: ${companyRuc}</p>` : ''}
-                    ${companyAddress ? `<p style="margin: 0;">Dir: ${companyAddress}</p>` : ''}
+                    <h2>${companyName}</h2>
+                    <p>${companySlogan}</p>
+                    ${companyRuc ? `<p>RUC: ${companyRuc}</p>` : ''}
+                    ${companyAddress ? `<p>${companyAddress}</p>` : ''}
                 </div>
+                
                 <div class="divider"></div>
-                <p><strong>Venta:</strong> ${sale.codigo_venta || 'SIN CODIGO'}</p>
-                <p><strong>Fecha:</strong> ${formatDate(sale.fecha || new Date().toISOString())}</p>
-                <p><strong>Cajero:</strong> ${sale.usuario?.nombre || 'SISTEMA'}</p>
-                <p><strong>Cliente:</strong> ${sale.cliente ? `${sale.cliente.nombres} ${sale.cliente.apellidos || ''}` : 'CONTADO'}</p>
-                <div class="divider"></div>
-                <div style="font-weight: bold; margin-bottom: 5px;">
-                    <span style="display: inline-block; width: 40mm;">Prod.</span>
-                    <span style="display: inline-block; width: 10mm;">Cant.</span>
-                    <span style="display: inline-block; width: 20mm; text-align: right;">Total</span>
+                
+                <div class="info-row">
+                    <strong>Venta:</strong>
+                    <span>${sale.codigo_venta || 'SIN CODIGO'}</span>
                 </div>
+                <div class="info-row">
+                    <strong>Fecha:</strong>
+                    <span>${formatDate(sale.fecha || new Date().toISOString())}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Cajero:</strong>
+                    <span>${(sale.usuario?.nombre || 'SISTEMA').substring(0, 15)}</span>
+                </div>
+                <div class="info-row">
+                    <strong>Cliente:</strong>
+                    <span>${sale.cliente ? `${sale.cliente.nombres} ${sale.cliente.apellidos || ''}`.substring(0, 20) : 'CONTADO'}</span>
+                </div>
+                
+                <div class="divider"></div>
+                
+                <div class="table-header">
+                    <span>PRODUCTO</span>
+                    <span>CANT</span>
+                    <span class="right">TOTAL</span>
+                </div>
+                
                 ${(sale.detalles || []).map((d: any) => `
                     <div class="item">
-                        <span style="display: inline-block; width: 40mm; overflow: hidden; white-space: nowrap;">${d.producto?.nombre || 'Producto'}</span>
-                        <span style="display: inline-block; width: 10mm;">${d.cantidad}</span>
-                        <span style="display: inline-block; width: 20mm; text-align: right;">${formatCurrency(d.subtotal)}</span>
+                        <div class="item-name">${d.producto?.nombre || 'Producto'}</div>
+                        <div class="item-details">
+                            <span>S/ ${Number(d.precio_unitario || 0).toFixed(2)}</span>
+                            <span>${d.cantidad}</span>
+                            <span class="right">S/ ${Number(d.subtotal || 0).toFixed(2)}</span>
+                        </div>
                     </div>
                 `).join('')}
-                <div class="divider"></div>
-                <div class="item total">
-                    <span>TOTAL</span>
-                    <span>${formatCurrency(sale.total)}</span>
+                
+                <div class="total-section">
+                    <div class="total-row">
+                        <span>TOTAL:</span>
+                        <span>${formatCurrency(sale.total)}</span>
+                    </div>
                 </div>
-                <p><strong>Método Pago:</strong> ${sale.metodo_pago}</p>
-                <div class="divider"></div>
-                <div class="text-center footer">
+                
+                <div class="payment-info">
+                    <strong>Pago:</strong> ${sale.metodo_pago || 'CONTADO'}
+                </div>
+                
+                <div class="footer">
                     <p>${ticketFooter}</p>
-                    <p>Visítenos pronto.</p>
+                    <p>¡Vuelva pronto!</p>
                 </div>
+                
                 <script>
                     window.onload = () => { 
-                        window.print(); 
-                        setTimeout(() => window.close(), 500);
+                        setTimeout(() => {
+                            window.print();
+                            setTimeout(() => window.close(), 800);
+                        }, 100);
                     };
                 </script>
             </body>
